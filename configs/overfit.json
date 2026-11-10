@@ -1,0 +1,17 @@
+{
+  "dataset": "data/smoke",
+  "output": "runs/overfit",
+  "steps": 300,
+  "batch_size": 4,
+  "base_channels": 8,
+  "learning_rate": 0.001,
+  "seed": 42,
+  "device": "auto",
+  "threads": 4,
+  "log_every": 25,
+  "save_every": 100,
+  "validation_samples": 4,
+  "cache_samples": 8,
+  "overfit": 4,
+  "loss_weights": {"raster": 1.0, "contour": 0.25, "tone": 0.5, "orientation": 0.1}
+}

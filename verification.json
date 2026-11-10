@@ -1,0 +1,55 @@
+{
+  "date": "2026-11-10",
+  "platform": "Apple M3 Pro, 18 GB unified memory",
+  "numpy": "2.4.4",
+  "test_command": "PYTHONPATH=src python -m unittest discover -s tests -v",
+  "tests_passed": 9,
+  "tests_skipped": 3,
+  "skip_reason": "PyTorch unavailable; pip install failed because package-network DNS/access was unavailable",
+  "verified": [
+    "31-channel finite geometry features",
+    "unit surface normals",
+    "moving ray-traced cast shadows",
+    "white unshadowed receiver",
+    "deterministic samples and seeded variation",
+    "drawing density controls and marker variation",
+    "geometry-group train/val/test isolation",
+    "materialized/on-demand parity",
+    "PNG and JSON exports",
+    "metric behavior for exact and blank predictions",
+    "inference path excludes teacher calls"
+  ],
+  "not_executed": [
+    "PyTorch forward/backward",
+    "CPU checkpoint continuation",
+    "learned PNG export/evaluation",
+    "MPS training/inference and memory benchmark",
+    "overfit diagnostic",
+    "pilot training",
+    "Gradio UI"
+  ],
+  "artifacts": [
+    "data/smoke/manifest.json",
+    "data/pilot/manifest.json",
+    "data/pilot/preview/index.html",
+    "runs/teacher-studies/index.html",
+    "runs/teacher-studies/contact-sheet.png"
+  ],
+  "synthetic_geometry_256_seconds": {
+    "shapes": [
+      "sphere",
+      "cylinder",
+      "plate",
+      "helmet",
+      "arm"
+    ],
+    "seconds": [
+      0.04748645797371864,
+      0.012559915892779827,
+      0.01772762497421354,
+      0.032567374990321696,
+      0.033071500016376376
+    ]
+  },
+  "trained_weights_bundled": false
+}

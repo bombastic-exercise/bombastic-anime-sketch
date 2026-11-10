@@ -1,0 +1,16 @@
+{
+  "dataset": "data/pilot",
+  "output": "runs/pilot",
+  "steps": 10000,
+  "batch_size": 4,
+  "base_channels": 24,
+  "learning_rate": 0.0003,
+  "seed": 42,
+  "device": "auto",
+  "threads": 4,
+  "log_every": 25,
+  "save_every": 250,
+  "validation_samples": 16,
+  "cache_samples": 64,
+  "loss_weights": {"raster": 1.0, "contour": 0.25, "tone": 0.5, "orientation": 0.1}
+}
