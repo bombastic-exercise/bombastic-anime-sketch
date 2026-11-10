@@ -73,10 +73,36 @@ Training on these same examples repeatedly is **overfitting**. Here it is intent
 .venv/bin/python -m animeart demo --checkpoint runs/overfit/best.pt
 ```
 
-The validation split contains geometry identities kept out of training. Open `runs/overfit-evaluation/index.html` and compare it with the memorized examples. In the local demo, hold geometry and variation seeds fixed while changing light, hatch spacing, or crosshatching. Check what responds and what does not. A four-example model may fail on unseen shapes; that is useful evidence about **generalization**.
+The validation split contains geometry identities kept out of training. Open `runs/overfit-evaluation/index.html` and compare it with the memorized examples. The existing held-out drawings are blurry, and the report records zero reliable stroke-angle coverage. The demo lets you inspect this failure, but its output is not a finished sketch. Hold geometry and variation seeds fixed while changing light, hatch spacing, or crosshatching. This difference between memorizing four examples and drawing unseen ones is **generalization**.
 
 > **TOPIX · Read:** Training vs validation, checkpoint `best.pt` vs `last.pt`, and why low training loss is insufficient.
 
-> **TODO · Record:** Benchmark the 256-pixel pilot after the small model learns recognizable marks. Record measured memory and expected time before starting 10,000 steps.
+> **TODO · Improve:** Replace the synthetic drawing targets and primitive forms with examples that match the desired art direction, then require clear held-out strokes before a 10,000-step pilot.
 
 The bigger character-design goal is in [MVP.md](MVP.md). This stage teaches the renderer to imitate synthetic sketch targets; it does not yet learn anatomy or a personal art style.
+
+## 6. Study a 2D figure experiment
+
+The figure path adds posed heroine and armored-heroine guides. It replaces ellipsoid arms with shoulder–elbow–wrist and hip–knee–ankle chains. The forearm outline follows a tapered width profile. The network's final bias starts the output near white; an explicit contour prior darkens the line guide before training. The network learns ink and shading around that guide. The generator supplies the anatomy and armor construction, so this exercise does not teach the network to invent a new body.
+
+```sh
+.venv/bin/python -m animeart generate --output data/figures-v3 --samples 120 --geometries 30 --size 128 --shapes heroine armored_heroine
+.venv/bin/python -m animeart train --config configs/figures-smoke.json
+.venv/bin/python -m animeart evaluate --checkpoint runs/figures-v3/best.pt --dataset data/figures-v3 --split val --output runs/figures-v3-evaluation
+```
+
+Open `data/figures-v3/preview/index.html` and `runs/figures-v3-evaluation/index.html`. The first shows the target drawings; the second shows what the trained model reproduces on unseen pose recipes. These are schematic anatomy studies, not finished anime drawings. Increasing training steps cannot add design detail absent from the target drawings.
+
+> **TOPIX · Read:** Follow `contour_prior` from `configs/figures-smoke.json` into `SketchUNet.forward`; compare its first output with a trained checkpoint.
+
+> **TODO · Art direction:** Study the three images in `assets/`. Extend the guide with their winged helm, layered plates, flowing hair and cloth, stronger facial design, and deliberate line weight. Add reviewed examples of other poses before scaling the dataset.
+
+## 7. Try a real drawing as a guide
+
+```sh
+.venv/bin/python -m animeart reference --checkpoint runs/figures-v3/best.pt --source assets/malenia1.jpeg --output runs/malenia1-reference --size 256
+```
+
+Open `runs/malenia1-reference/index.html`. The guide is extracted from the existing drawing. The raw output shows what the network actually predicts; the last panel adjusts its contrast for viewing. The model has not learned to create Malenia or invent a new pose from this single image.
+
+> **TOPIX · Read:** Distinguish a training target, a validation example, an input guide, and a reference image. They play different roles even when all are PNGs or JPEGs.

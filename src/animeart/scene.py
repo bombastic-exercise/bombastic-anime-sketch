@@ -1,14 +1,14 @@
-"""Analytic ellipsoid scenes with orthographic cameras and ray-traced shadows.
+"""Analytic 3D studies and articulated 2D figure studies.
 
-These are training scaffolds, not character assets. World Y is up. The receiver
-plane is y=-1.05; light vectors point from a surface toward the source.
+The 3D studies use orthographic cameras and ray-traced shadows. World Y is up;
+the receiver plane is y=-1.05. The 2D studies use drawn joints and line guides.
 """
 
 from dataclasses import asdict, dataclass
 
 import numpy as np
 
-SHAPES = ("sphere", "cylinder", "plate", "helmet", "arm")
+SHAPES = ("sphere", "cylinder", "plate", "helmet", "arm", "heroine", "armored_heroine")
 
 
 @dataclass(frozen=True)
@@ -107,6 +107,9 @@ def boundaries(values):
 def render_geometry(scene, size=256):
     if size < 32 or size > 1024 or size % 8:
         raise ValueError("Image size must be a multiple of 8 between 32 and 1024")
+    if scene.shape in ("heroine", "armored_heroine"):
+        from .figure import render_figure
+        return render_figure(scene, size)
     matrix = rotation(scene.camera_yaw, -scene.camera_elevation)
     axis = np.linspace(-1.5, 1.5, size, dtype=np.float32)
     x, y = np.meshgrid(axis, -axis)

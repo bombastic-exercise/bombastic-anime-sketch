@@ -14,6 +14,20 @@ HAS_TORCH = importlib.util.find_spec("torch") is not None
 
 @unittest.skipUnless(HAS_TORCH, "PyTorch is not installed")
 class LearningTests(unittest.TestCase):
+    def test_contour_prior_starts_with_white_paper_and_visible_outline(self):
+        import torch
+        from animeart.data import sample
+        from animeart.model import SketchUNet
+
+        features, _, _ = sample({"shape": "armored_heroine", "geometry_seed": 0,
+                                 "condition_seed": 7}, 64)
+        model = SketchUNet(4, contour_prior=True).eval()
+        with torch.inference_mode():
+            output = model(torch.from_numpy(features[None]))[0, 0].numpy()
+        outline = features[6] > 0.5
+        self.assertGreater(float(output[~outline].mean()), 0.85)
+        self.assertLess(float(output[outline].mean()), 0.4)
+
     def test_forward_backward_and_loss(self):
         import torch
         from animeart.data import sample
@@ -38,6 +52,7 @@ class LearningTests(unittest.TestCase):
         from animeart.evaluate import evaluate
         from animeart.export import export_prediction
         from animeart.runtime import load_model
+        from animeart.reference import render_reference
         from animeart.scene import Scene
         from animeart.train import train
 
@@ -58,6 +73,11 @@ class LearningTests(unittest.TestCase):
             output = root / "learned.png"
             export_prediction(root / "split/last.pt", output, Scene(), Controls(), device="cpu")
             self.assertEqual(json.loads(output.with_suffix(".json").read_text())["kind"], "learned_prediction")
+            reference = render_reference(root / "split/last.pt", output, root / "reference",
+                                         device="cpu", size=32)
+            self.assertEqual(reference["kind"], "reference_conditioned_prediction")
+            self.assertTrue((root / "reference/model.png").exists())
+            self.assertTrue((root / "reference/model-raw.png").exists())
             evaluate(root / "split/last.pt", data, root / "evaluation", count=1, device="cpu")
             self.assertTrue((root / "evaluation/report.json").exists())
             with self.assertRaises(ValueError):

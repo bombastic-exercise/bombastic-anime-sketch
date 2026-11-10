@@ -1,8 +1,8 @@
 # AnimeArt
 
-A PyTorch experiment that learns to render 2D sketches from geometry and drawing controls. The first milestone covers simple forms and armor studies, with fineliner, pencil, and marker targets. The drawing network starts from random weights.
+A PyTorch experiment that learns to render 2D sketches from geometry and drawing controls. It now includes articulated heroine and armored-heroine pose studies alongside the earlier simple forms. The drawing network starts from initialized weights; a figure-specific contour prior makes its first prediction resemble white paper with an outline.
 
-This is a rendering research scaffold. It does not yet generate full characters or look up Malenia. [PoC.md](PoC.md) describes the experiment; [MVP.md](MVP.md) describes the character-design workflow that follows it.
+This is a rendering research scaffold. Its new full-body figures are schematic pose targets, not finished anime art. It does not look up Malenia. [PoC.md](PoC.md) describes the original experiment; [MVP.md](MVP.md) describes the character-design workflow that follows it.
 
 ## Setup
 
@@ -18,7 +18,36 @@ python -m pip install -e '.[demo]'
 
 The CLI is available as `animeart` or `python -m animeart`. Run commands from the repository root so the example configuration paths resolve correctly. Without the optional demo, install with `python -m pip install -e .`.
 
+## Current figure run and Malenia reference
+
+The active experiment uses 120 procedural recipes at 128 pixels: 96 training examples, 12 validation examples, and 12 test examples. Geometry identities are split before lighting and drawing variation, so related recipes stay in one split. `configs/figures-smoke.json` trains 200 optimizer steps and checks four validation examples every 50 steps. It saves the checkpoint with the lowest validation loss. This is a pipeline check, not a quality claim.
+
+The three images in `assets/` are visual references. They are not part of the training dataset. To run the current figure checkpoint on the line structure extracted from `malenia1.jpeg`:
+
+```sh
+animeart reference --checkpoint runs/figures-v3/best.pt --source assets/malenia1.jpeg --output runs/malenia1-reference --size 256
+```
+
+Open `runs/malenia1-reference/index.html` to compare the source, extracted line guide, raw prediction, and contrast-adjusted prediction. The image supplies Malenia's composition and detail; the model only renders from that guide. The checkpoint was trained at 128 pixels, so the 256-pixel reference run is exploratory. `metadata.json` records the source and checkpoint hashes plus the display adjustment.
+
+The unit tests check geometry, data splits, deterministic rendering, model updates, checkpoint continuation, export, and reference input handling. They do not judge whether a drawing looks good. Validation comparisons use unseen procedural geometry; the test split is reserved for final assessment. Running `malenia1.jpeg` through the checkpoint is inference, not a held-out test, because its guide does not come from the procedural dataset.
+
 ## Inspect the training targets
+
+For the new 2D pose path, generate a small dataset and inspect the two figure types and three joint poses:
+
+```sh
+animeart generate --output data/figures-v3 --samples 120 --geometries 30 --size 128 --shapes heroine armored_heroine
+animeart teacher --shape armored_heroine --geometry-seed 1 --output runs/heroine-pose.png
+animeart train --config configs/figures-smoke.json
+animeart evaluate --checkpoint runs/figures-v3/best.pt --dataset data/figures-v3 --split val --output runs/figures-v3-evaluation
+```
+
+Open `data/figures-v3/preview/index.html` to inspect the targets. `contour_prior` in the figure config starts from white paper and the figure renderer's line guide. The model learns ink and shading from that guide; the 2D figure renderer supplies pose, face, hair, and armor lines. Existing datasets and checkpoints keep their earlier feature layout.
+
+> **TOPIX · Read:** The shoulder–elbow–wrist and hip–knee–ankle chains in `src/animeart/figure.py`; tapered forearms are drawn from width profiles rather than ellipses.
+
+> **TODO · Improve:** Replace these schematic targets with reviewed anime figure and armor drawings before a large training run. Check hand anatomy, face design, pose range, and armor construction against those references.
 
 ```sh
 animeart teacher --shape helmet --preset fineliner --output runs/teacher-helmet.png
@@ -30,7 +59,7 @@ Open `data/smoke/preview/index.html` to inspect targets, tones, normals, and sha
 
 The current workspace already contains smoke and pilot manifests; skip their generation commands if present. A five-form, three-medium comparison is available at `runs/teacher-studies/index.html` and `runs/teacher-studies/contact-sheet.png`.
 
-Forms: `sphere`, `cylinder` (a rounded elongated volume), `plate`, `helmet`, and `arm`. Helmet and arm are simple compositions of ellipsoids, not character assets.
+The original forms are `sphere`, `cylinder` (a rounded elongated volume), `plate`, `helmet`, and `arm`. Helmet and arm are simple ellipsoid compositions. The newer `heroine` and `armored_heroine` forms use a separate 2D joint and contour renderer.
 
 ## Measure and train
 
@@ -96,6 +125,8 @@ These are learned controls with approximate behavior. Evaluation reports raster 
 
 ## Verification status
 
-The synthetic pipeline has been executed at 64 and 256 pixels and its targets visually inspected. NumPy-only tests passed for geometry, cast shadows, controls, deterministic recipes, split isolation, cached samples, and PNG/JSON export. PyTorch tests are included for forward/backward, exact CPU checkpoint continuation, learned export/evaluation, and MPS repeatability.
+The synthetic pipeline has been executed at 64 and 256 pixels. Current artifacts include 64-pixel smoke and four-example overfit checkpoints, evaluations, and an MPS benchmark recorded on the local Mac. The overfit run reduced training loss, but held-out results are visibly blurry and evaluation records zero reliable stroke-angle coverage. These checkpoints are learning diagnostics, not usable character sketches. The synthetic teacher drawings also lack the anatomy and design detail needed for the character goal.
 
-During implementation, dependency download was blocked by network access and PyTorch/Gradio were unavailable. Those learning tests were skipped; no training, GPU benchmark, learned-quality result, or live-demo validation is claimed. See `verification.json` for the recorded checks.
+In this execution environment, 13 of 14 tests pass; the MPS test skips because MPS is unavailable here. Earlier local run reports record MPS training. `verification.json` is the historical pre-install record.
+
+The 128-pixel figure run completed 200 CPU steps and reached best validation loss 0.0446. Its learned output follows the line guide on held-out recipes, but the source figures remain schematic. The three references in `assets/` show the desired detail: a winged helm, layered armor, flowing hair and cloth, stronger facial design, and deliberate line weight. The current pose guides do not contain that detail. Improving the guide and collecting reviewed target drawings comes before a larger training run. The figure artifacts live in ignored `data/figures-v3/` and `runs/figures-v3/` directories.

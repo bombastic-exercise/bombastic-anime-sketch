@@ -26,11 +26,12 @@ class Block(nn.Module):
 
 
 class SketchUNet(nn.Module):
-    def __init__(self, base_channels=24):
+    def __init__(self, base_channels=24, contour_prior=False):
         super().__init__()
         if base_channels < 4 or base_channels > 128:
             raise ValueError("base_channels must be between 4 and 128")
         b = base_channels
+        self.contour_prior = contour_prior
         # Fixed Fourier encoding of coordinates is independent of drawing targets.
         self.register_buffer("frequencies", torch.tensor([1, 2, 4, 8], dtype=torch.float32))
         self.condition = nn.Sequential(nn.Linear(14, b * 4), nn.SiLU(), nn.Linear(b * 4, b * 4))
@@ -42,7 +43,9 @@ class SketchUNet(nn.Module):
         self.decoder2 = Block(b * 6, b * 2, b * 4)
         self.decoder1 = Block(b * 3, b, b * 4)
         self.output = nn.Conv2d(b, 1, 1)
-        nn.init.constant_(self.output.bias, 1.5)
+        # A mostly white initial page makes sparse ink errors visible from step one.
+        nn.init.normal_(self.output.weight, mean=0.0, std=0.01)
+        nn.init.constant_(self.output.bias, 2.94)
 
     def forward(self, x):
         if x.ndim != 4 or x.shape[1] != len(CHANNEL_NAMES) or x.shape[-1] % 8 or x.shape[-2] % 8:
@@ -59,4 +62,7 @@ class SketchUNet(nn.Module):
         def up(value, skip, block):
             return block(torch.cat([F.interpolate(value, size=skip.shape[-2:], mode="bilinear", align_corners=False), skip], 1), condition)
 
-        return self.output(up(up(up(d, c, self.decoder3), b, self.decoder2), a, self.decoder1)).sigmoid()
+        logits = self.output(up(up(up(d, c, self.decoder3), b, self.decoder2), a, self.decoder1))
+        if self.contour_prior:
+            logits = logits - 6 * x[:, 6:7] - x[:, 7:8]
+        return logits.sigmoid()

@@ -58,8 +58,9 @@ def main():
         raise ValueError("Checkpoint and dataset image sizes differ")
     width = checkpoint["config"]["base_channels"]
     torch.manual_seed(checkpoint["config"]["seed"])
-    before_model = SketchUNet(base_channels=width).to(device).eval()
-    after_model = SketchUNet(base_channels=width).to(device).eval()
+    prior = checkpoint["config"].get("contour_prior", False)
+    before_model = SketchUNet(base_channels=width, contour_prior=prior).to(device).eval()
+    after_model = SketchUNet(base_channels=width, contour_prior=prior).to(device).eval()
     after_model.load_state_dict(checkpoint["model"])
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)

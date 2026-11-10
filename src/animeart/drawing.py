@@ -78,6 +78,8 @@ def render_teacher(geometry, controls, noise):
     elif controls.preset == "marker":
         ink = 1 - (1 - ink * 0.8) * (1 - tone * 0.14)
     ink = np.maximum(ink, geometry["contour"] * (0.8 + 0.1 * smooth * controls.irregularity))
+    if "line_art" in geometry:
+        ink = np.maximum(ink, geometry["line_art"])
     return np.clip(1 - controls.darkness * ink * geometry["mask"], 0, 1).astype(np.float32)
 
 

@@ -15,7 +15,7 @@ from .losses import drawing_loss
 from .model import SketchUNet
 from .runtime import file_hash, memory, select_device, stack_batch, synchronize
 
-DEFAULTS = {"steps": 10000, "batch_size": 4, "base_channels": 24, "learning_rate": 0.0003,
+DEFAULTS = {"steps": 10000, "batch_size": 4, "base_channels": 24, "contour_prior": False, "learning_rate": 0.0003,
             "seed": 42, "device": "auto", "threads": 4, "log_every": 25, "save_every": 250,
             "validation_samples": 16, "cache_samples": 64,
             "loss_weights": {"raster": 1.0, "contour": 0.25, "tone": 0.5, "orientation": 0.1},
@@ -48,15 +48,15 @@ def train(config, resume=None):
     train_data = SketchDataset(config["dataset"], "train", config["cache_samples"])
     val_data = SketchDataset(config["dataset"], "val", 0)
     manifest_hash = file_hash(Path(config["dataset"]) / "manifest.json")
-    model = SketchUNet(config["base_channels"]).to(device)
+    model = SketchUNet(config["base_channels"], contour_prior=config["contour_prior"]).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=config["learning_rate"])
     start_step, best_loss = 0, float("inf")
     if resume:
         state = torch.load(resume, map_location="cpu", weights_only=True)
         if state["manifest_sha256"] != manifest_hash or state["feature_version"] != FEATURE_VERSION:
             raise ValueError("Resume requires the same dataset and feature version")
-        for key in ("base_channels", "batch_size", "learning_rate", "seed", "overfit", "loss_weights"):
-            if state["config"][key] != config[key]:
+        for key in ("base_channels", "contour_prior", "batch_size", "learning_rate", "seed", "overfit", "loss_weights"):
+            if state["config"].get(key, DEFAULTS.get(key)) != config[key]:
                 raise ValueError(f"Cannot change {key} when resuming")
         model.load_state_dict(state["model"])
         optimizer.load_state_dict(state["optimizer"])

@@ -16,6 +16,16 @@ from animeart.scene import SHAPES, Scene, render_geometry
 
 
 class SyntheticTests(unittest.TestCase):
+    def test_articulated_figure_targets_and_pose_variation(self):
+        neutral = render_geometry(Scene(shape="armored_heroine", geometry_seed=0), 128)
+        raised = render_geometry(Scene(shape="armored_heroine", geometry_seed=1), 128)
+        self.assertGreater(np.abs(neutral["object"] - raised["object"]).mean(), 0.01)
+        np.testing.assert_array_equal(neutral["line_art"], neutral["contour"])
+        sample_features, target, _ = sample({"shape": "armored_heroine", "geometry_seed": 1,
+                                             "condition_seed": 7}, 128)
+        self.assertEqual(sample_features.shape, (31, 128, 128))
+        self.assertTrue(np.isfinite(target).all())
+
     def test_finite_geometry_and_unit_normals(self):
         for shape in SHAPES:
             with self.subTest(shape=shape):

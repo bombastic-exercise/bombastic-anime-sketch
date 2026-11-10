@@ -59,7 +59,8 @@ def load_model(checkpoint, requested="auto"):
     state = torch.load(checkpoint, map_location="cpu", weights_only=True)
     if state.get("feature_version") != FEATURE_VERSION or state.get("channels") != list(CHANNEL_NAMES):
         raise ValueError("Checkpoint feature layout is incompatible with this version")
-    model = SketchUNet(state["config"]["base_channels"])
+    model = SketchUNet(state["config"]["base_channels"],
+                      contour_prior=state["config"].get("contour_prior", False))
     model.load_state_dict(state["model"])
     model.to(device).eval()
     return model, state, device

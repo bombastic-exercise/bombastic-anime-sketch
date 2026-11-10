@@ -3,7 +3,8 @@ import json
 
 
 def drawing_arguments(parser):
-    parser.add_argument("--shape", choices=["sphere", "cylinder", "plate", "helmet", "arm"], default="helmet")
+    from .scene import SHAPES
+    parser.add_argument("--shape", choices=SHAPES, default="armored_heroine")
     parser.add_argument("--geometry-seed", type=int, default=0)
     parser.add_argument("--camera-yaw", type=float, default=15)
     parser.add_argument("--camera-elevation", type=float, default=12)
@@ -22,6 +23,7 @@ def drawing_arguments(parser):
 
 
 def parser():
+    from .scene import SHAPES
     root = argparse.ArgumentParser(description="From-scratch, geometry-conditioned sketch rendering")
     sub = root.add_subparsers(dest="command", required=True)
     generate = sub.add_parser("generate", help="Write split recipes, previews, and optional cached samples")
@@ -31,6 +33,7 @@ def parser():
     generate.add_argument("--size", type=int, default=256)
     generate.add_argument("--seed", type=int, default=42)
     generate.add_argument("--materialize", action="store_true")
+    generate.add_argument("--shapes", nargs="+", choices=SHAPES)
     teacher = sub.add_parser("teacher", help="Export a procedural training target (not a learned drawing)")
     drawing_arguments(teacher)
     teacher.add_argument("--size", type=int, default=256)
@@ -65,6 +68,13 @@ def parser():
     demo.add_argument("--device", default="auto")
     demo.add_argument("--port", type=int, default=7860)
     demo.add_argument("--output", default="runs/demo")
+    reference = sub.add_parser("reference", help="Render an image-derived line guide with a trained figure checkpoint")
+    reference.add_argument("--checkpoint", required=True)
+    reference.add_argument("--source", required=True)
+    reference.add_argument("--output", default="runs/reference")
+    reference.add_argument("--device", default="auto")
+    reference.add_argument("--seed", type=int, default=12)
+    reference.add_argument("--size", type=int, default=256)
     return root
 
 
@@ -104,6 +114,9 @@ def main(argv=None):
         elif command == "demo":
             from .demo import launch
             launch(**args)
+        elif command == "reference":
+            from .reference import render_reference
+            result = render_reference(**args)
         if result is not None:
             print(json.dumps(result, indent=2))
     except ModuleNotFoundError as error:

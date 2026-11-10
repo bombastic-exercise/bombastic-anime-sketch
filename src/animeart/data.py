@@ -11,7 +11,7 @@ from .io import gallery, save_png, write_json
 from .scene import SHAPES, Scene, render_geometry
 
 
-def generate_manifest(output, samples=10000, geometries=500, size=256, seed=42, materialize=False):
+def generate_manifest(output, samples=10000, geometries=500, size=256, seed=42, materialize=False, shapes=None):
     output = Path(output)
     if (output / "manifest.json").exists():
         raise ValueError(f"Dataset already exists: {output}; choose a new directory")
@@ -20,6 +20,13 @@ def generate_manifest(output, samples=10000, geometries=500, size=256, seed=42, 
     # Validate dimensions before creating any output.
     if size < 32 or size > 1024 or size % 8:
         raise ValueError("size must be a multiple of 8 between 32 and 1024")
+    shapes = tuple(shapes) if shapes is not None else SHAPES
+    if not shapes or any(shape not in SHAPES for shape in shapes):
+        raise ValueError(f"shapes must be selected from {SHAPES}")
+    figure_version = None
+    if any(shape in ("heroine", "armored_heroine") for shape in shapes):
+        from .figure import FIGURE_VERSION
+        figure_version = FIGURE_VERSION
     rng = np.random.default_rng(seed)
     groups = rng.permutation(geometries)
     train_end, val_end = int(0.8 * geometries), int(0.9 * geometries)
@@ -28,10 +35,11 @@ def generate_manifest(output, samples=10000, geometries=500, size=256, seed=42, 
     records = [{"id": i, "geometry_id": i % geometries,
                 "geometry_seed": seed * 100000 + i % geometries,
                 "condition_seed": seed * 1000000 + i,
-                "shape": SHAPES[(i % geometries) % len(SHAPES)],
+                "shape": shapes[(i % geometries) % len(shapes)],
                 "split": assigned[i % geometries]} for i in range(samples)]
     manifest = {"version": 1, "feature_version": FEATURE_VERSION, "size": size,
-                "seed": seed, "geometries": geometries, "records": records}
+                "seed": seed, "geometries": geometries, "shapes": shapes,
+                "figure_version": figure_version, "records": records}
     write_json(output / "manifest.json", manifest)
     if materialize:
         for record in records:
@@ -70,6 +78,10 @@ class SketchDataset:
         self.manifest = json.loads((self.directory / "manifest.json").read_text())
         if self.manifest["version"] != 1 or self.manifest["feature_version"] != FEATURE_VERSION:
             raise ValueError("Unsupported dataset version; regenerate the dataset")
+        if any(record["shape"] in ("heroine", "armored_heroine") for record in self.manifest["records"]):
+            from .figure import FIGURE_VERSION
+            if self.manifest.get("figure_version") != FIGURE_VERSION:
+                raise ValueError("Figure generator changed; regenerate the dataset")
         self.size = self.manifest["size"]
         self.records = [r for r in self.manifest["records"] if r["split"] == split]
         if not self.records:
